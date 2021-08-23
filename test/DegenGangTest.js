@@ -16,7 +16,13 @@ contract("DegenGang", async (accounts) => {
   
   beforeEach(async () => {
     // Create Instances
-    this.DEGGNInstance = await DegenGang.new(accounts[8], accounts[9], { from: deployer });
+    this.DEGGNInstance = await DegenGang.new(
+      accounts[6],  // Client
+      accounts[7],  // Dev
+      accounts[8],  // Community
+      accounts[9],  // Giveaway
+      { from: deployer }
+    );
     // Create Contracts
     this.DEGGN = await new web3.eth.Contract(DegenGangABI.abi, this.DEGGNInstance.address);
   });
@@ -26,7 +32,7 @@ contract("DegenGang", async (accounts) => {
       // Get Initial Total Sale Element
       const totalSaleElement = await callMethod(this.DEGGN.methods.totalSaleElement, []);
       // Check Total Sale Element
-      assert.equal(totalSaleElement, '10000');
+      assert.equal(totalSaleElement, '7000');
     });
 
     it ('Check Set Total Sale Element - no Owner call it', async() => {
@@ -161,12 +167,22 @@ contract("DegenGang", async (accounts) => {
       // Get Client Address
       const clientAddress = await callMethod(this.DEGGN.methods.clientAddress, []);
       // Check Client Address
-      assert.equal(clientAddress, accounts[8]);
+      assert.equal(clientAddress, accounts[6]);
 
       // Get Dev Address
       const devAddress = await callMethod(this.DEGGN.methods.devAddress, []);
       // Check Dev Address
-      assert.equal(devAddress, accounts[9]);
+      assert.equal(devAddress, accounts[7]);
+
+      // Get Community Address
+      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
+      // Check Community Address
+      assert.equal(communityFundAddress, accounts[8]);
+
+      // Get Giveaway Address
+      const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
+      // Check Giveaway Address
+      assert.equal(giveawayAddress, accounts[9]);
     });
 
     it ('Check Sale Is Active', async() => {
@@ -385,12 +401,22 @@ contract("DegenGang", async (accounts) => {
       // Get Client Address
       const clientAddress = await callMethod(this.DEGGN.methods.clientAddress, []);
       // Check Client Address
-      assert.equal(clientAddress, accounts[8]);
+      assert.equal(clientAddress, accounts[6]);
 
       // Get Dev Address
       const devAddress = await callMethod(this.DEGGN.methods.devAddress, []);
       // Check Dev Address
-      assert.equal(devAddress, accounts[9]);
+      assert.equal(devAddress, accounts[7]);
+
+      // Get Community Address
+      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
+      // Check Community Address
+      assert.equal(communityFundAddress, accounts[8]);
+
+      // Get Giveaway Address
+      const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
+      // Check Giveaway Address
+      assert.equal(giveawayAddress, accounts[9]);
     });
 
     it ('Check DEGGN Mint and Admin Mint', async() => {
@@ -472,8 +498,10 @@ contract("DegenGang", async (accounts) => {
 
       // Get Contract Balance
       const contractBalance = new BigNumber(await web3.eth.getBalance(this.DEGGNInstance.address));
-      const clientAmount = contractBalance.multipliedBy(7000).dividedBy(10000);
-      const devAmount = contractBalance.minus(clientAmount);
+      const clientAmount = contractBalance.multipliedBy(6000).dividedBy(10000);
+      const devAmount = contractBalance.multipliedBy(3000).dividedBy(10000);
+      const communityAmount = contractBalance.multipliedBy(500).dividedBy(10000);
+      const giveawayAmount = contractBalance.minus(clientAmount).minus(devAmount).minus(communityAmount);
 
       // Call Withdraw
       await truffleAssert.reverts(
@@ -489,14 +517,27 @@ contract("DegenGang", async (accounts) => {
       const devAddress = await callMethod(this.DEGGN.methods.devAddress, []);
       const oldDevBalance = new BigNumber(await web3.eth.getBalance(devAddress));
 
+      // Get Community Account
+      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
+      const oldCommunityBalance = new BigNumber(await web3.eth.getBalance(communityFundAddress));
+
+      // Get Giveaway Account
+      const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
+      const oldGiveawayBalance = new BigNumber(await web3.eth.getBalance(giveawayAddress));
+
       await this.DEGGNInstance.withdrawAll({ from: deployer });
 
       // Get Update Balance
       const newAdminBalance = new BigNumber(await web3.eth.getBalance(clientAddress));
       const newDevBalance = new BigNumber(await web3.eth.getBalance(devAddress));
+      const newCommunityBalance = new BigNumber(await web3.eth.getBalance(communityFundAddress));
+      const newGiveawayBalance = new BigNumber(await web3.eth.getBalance(giveawayAddress));
 
+      // Check Balance
       assert.equal(newAdminBalance.minus(oldAdminBalance).toFixed(), clientAmount.toFixed());
       assert.equal(newDevBalance.minus(oldDevBalance).toFixed(), devAmount.toFixed());
+      assert.equal(newCommunityBalance.minus(oldCommunityBalance).toFixed(), communityAmount.toFixed());
+      assert.equal(newGiveawayBalance.minus(oldGiveawayBalance).toFixed(), giveawayAmount.toFixed());
     });
   });
 });

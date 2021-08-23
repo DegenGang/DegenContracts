@@ -20,8 +20,12 @@ contract DegenGang is ERC721, Ownable {
     uint256 public totalSaleElement;
     uint256 public mintPrice;
     uint256 public maxByMint;
+
     address public clientAddress;
     address public devAddress;
+    address public communityFundAddress;
+    address public giveawayAddress;
+
     bool public saleIsActive;
 
     event CreateDeggn(
@@ -34,14 +38,21 @@ contract DegenGang is ERC721, Ownable {
         _;
     }
 
-    constructor(address wallet1, address wallet2) ERC721("Degen Gang", "DEGGN") {
-        totalSaleElement = 10000; // 10K
+    constructor(
+        address client,
+        address dev,
+        address communityFund,
+        address giveaway
+    ) ERC721("Degen Gang", "DEGGN") {
+        totalSaleElement = 7000; // 7K
         mintPrice = 6 * 10 ** 16; // 0.06 ETH
         saleIsActive = false;
         maxByMint = 30;
 
-        clientAddress = wallet1;
-        devAddress = wallet2;
+        clientAddress = client;
+        devAddress = dev;
+        communityFundAddress = communityFund;
+        giveawayAddress = giveaway;
     }
 
     /**
@@ -162,12 +173,25 @@ contract DegenGang is ERC721, Ownable {
     function withdrawAll() public onlyOwner {
         uint256 totalBalance = address(this).balance;
 
-        uint256 clientAmount = totalBalance.mul(7000).div(10000); // 70%
-        uint256 devAmount = totalBalance.sub(clientAmount); // 30%;
+        uint256 clientAmount = totalBalance.mul(6000).div(10000); // 60%
+        uint256 devAmount = totalBalance.mul(3000).div(10000); // 30%;
+        uint256 communityAmount = totalBalance.mul(500).div(10000); // 5%
+        uint256 giveawayAmount = totalBalance.sub(clientAmount).sub(devAmount).sub(communityAmount); // 5%
 
+        // Withdraw To Client
         (bool withdrawClient, ) = clientAddress.call{value: clientAmount}("");
         require(withdrawClient, "Withdraw Failed To Client.");
+
+        // Withdraw To Dev
         (bool withdrawDev, ) = devAddress.call{value: devAmount}("");
         require(withdrawDev, "Withdraw Failed To Dev");
+
+        // Withdraw To Community
+        (bool withdrawCommunity, ) = communityFundAddress.call{value: communityAmount}("");
+        require(withdrawCommunity, "Withdraw Failed To Community");
+
+        // Withdraw To Giveaway
+        (bool withdrawGiveaway, ) = giveawayAddress.call{value: giveawayAmount}("");
+        require(withdrawGiveaway, "Withdraw Failed To Giveaway");
     }
 }
