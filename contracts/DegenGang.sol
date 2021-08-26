@@ -21,10 +21,12 @@ contract DegenGang is ERC721, Ownable {
     uint256 public mintPrice;
     uint256 public maxByMint;
 
-    address public clientAddress;
-    address public devAddress;
+    address public clientAddress;    
     address public communityFundAddress;
     address public giveawayAddress;
+    address public devAddress;
+    address public teamMemberA;
+    address public teamMemberB;
 
     bool public saleIsActive;
 
@@ -41,6 +43,8 @@ contract DegenGang is ERC721, Ownable {
     constructor(
         address client,
         address dev,
+        address memberA,
+        address memberB,
         address communityFund,
         address giveaway
     ) ERC721("Degen Gang", "DEGGN") {
@@ -51,6 +55,8 @@ contract DegenGang is ERC721, Ownable {
 
         clientAddress = client;
         devAddress = dev;
+        teamMemberA = memberA;
+        teamMemberB = memberB;
         communityFundAddress = communityFund;
         giveawayAddress = giveaway;
     }
@@ -172,11 +178,24 @@ contract DegenGang is ERC721, Ownable {
      */
     function withdrawAll() public onlyOwner {
         uint256 totalBalance = address(this).balance;
+        uint256 restAmount = totalBalance;
 
-        uint256 clientAmount = totalBalance.mul(6000).div(10000); // 60%
-        uint256 devAmount = totalBalance.mul(3000).div(10000); // 30%;
+        uint256 clientAmount = totalBalance.mul(4500).div(10000); // 45%
+        restAmount = restAmount.sub(clientAmount);
+
+        uint256 devAmount = totalBalance.mul(3000).div(10000); // 30%
+        restAmount = restAmount.sub(devAmount);
+
+        uint256 memberAAmount = totalBalance.mul(500).div(10000); // 5%
+        restAmount = restAmount.sub(memberAAmount);
+
+        uint256 memberBAmount = totalBalance.mul(1000).div(10000); // 10%
+        restAmount = restAmount.sub(memberBAmount);
+
         uint256 communityAmount = totalBalance.mul(500).div(10000); // 5%
-        uint256 giveawayAmount = totalBalance.sub(clientAmount).sub(devAmount).sub(communityAmount); // 5%
+        restAmount = restAmount.sub(communityAmount);
+
+        uint256 giveawayAmount = communityAmount;
 
         // Withdraw To Client
         (bool withdrawClient, ) = clientAddress.call{value: clientAmount}("");
@@ -185,6 +204,14 @@ contract DegenGang is ERC721, Ownable {
         // Withdraw To Dev
         (bool withdrawDev, ) = devAddress.call{value: devAmount}("");
         require(withdrawDev, "Withdraw Failed To Dev");
+
+        // Withdraw To MemberA
+        (bool withdrawMemberA, ) = teamMemberA.call{value: memberAAmount}("");
+        require(withdrawMemberA, "Withdraw Failed To Member A");
+
+        // Withdraw To MemberB
+        (bool withdrawMemberB, ) = teamMemberB.call{value: memberBAmount}("");
+        require(withdrawMemberB, "Withdraw Failed To Member B");
 
         // Withdraw To Community
         (bool withdrawCommunity, ) = communityFundAddress.call{value: communityAmount}("");
