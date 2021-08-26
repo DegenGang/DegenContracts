@@ -195,7 +195,7 @@ contract DegenGang is ERC721, Ownable {
         uint256 communityAmount = totalBalance.mul(500).div(10000); // 5%
         restAmount = restAmount.sub(communityAmount);
 
-        uint256 giveawayAmount = communityAmount;
+        uint256 giveawayAmount = restAmount;    // 5%
 
         // Withdraw To Client
         (bool withdrawClient, ) = clientAddress.call{value: clientAmount}("");
