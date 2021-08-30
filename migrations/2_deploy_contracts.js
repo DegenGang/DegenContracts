@@ -17,7 +17,7 @@ function expertContractJSON(contractName, instance) {
 
 module.exports = async function (deployer) {
   const zeroAddress = '0x0000000000000000000000000000000000000000';
-  await deployer.deploy(DegenGang, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress);
+  await deployer.deploy(DegenGang, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress);
 
   expertContractJSON('DegenGang', DegenGang);
 };

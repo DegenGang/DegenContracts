@@ -21,8 +21,7 @@ contract("DegenGang", async (accounts) => {
       accounts[5],  // Dev
       accounts[6],  // Member A
       accounts[7],  // Member B
-      accounts[8],  // Community
-      accounts[9],  // Giveaway
+      accounts[8],  // Giveaway
       { from: deployer }
     );
     // Create Contracts
@@ -186,15 +185,10 @@ contract("DegenGang", async (accounts) => {
       // Check Dev Address
       assert.equal(teamMemberB, accounts[7]);
 
-      // Get Community Address
-      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
-      // Check Community Address
-      assert.equal(communityFundAddress, accounts[8]);
-
       // Get Giveaway Address
       const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
       // Check Giveaway Address
-      assert.equal(giveawayAddress, accounts[9]);
+      assert.equal(giveawayAddress, accounts[8]);
     });
 
     it ('Check Sale Is Active', async() => {
@@ -430,15 +424,10 @@ contract("DegenGang", async (accounts) => {
       // Check Dev Address
       assert.equal(teamMemberB, accounts[7]);
 
-      // Get Community Address
-      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
-      // Check Community Address
-      assert.equal(communityFundAddress, accounts[8]);
-
       // Get Giveaway Address
       const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
       // Check Giveaway Address
-      assert.equal(giveawayAddress, accounts[9]);
+      assert.equal(giveawayAddress, accounts[8]);
     });
 
     it ('Check DEGGN Mint and Admin Mint', async() => {
@@ -520,12 +509,11 @@ contract("DegenGang", async (accounts) => {
 
       // Get Contract Balance
       const contractBalance = new BigNumber(await web3.eth.getBalance(this.DEGGNInstance.address));
-      const clientAmount = contractBalance.multipliedBy(4500).dividedBy(10000);
+      const clientAmount = contractBalance.multipliedBy(5000).dividedBy(10000);
       const devAmount = contractBalance.multipliedBy(3000).dividedBy(10000);
       const memberAAmount = contractBalance.multipliedBy(500).dividedBy(10000);
       const memberBAmount = contractBalance.multipliedBy(1000).dividedBy(10000);
-      const communityAmount = contractBalance.multipliedBy(500).dividedBy(10000);
-      const giveawayAmount = contractBalance.minus(clientAmount).minus(devAmount).minus(memberAAmount).minus(memberBAmount).minus(communityAmount);
+      const giveawayAmount = contractBalance.minus(clientAmount).minus(devAmount).minus(memberAAmount).minus(memberBAmount);
 
       // Call Withdraw
       await truffleAssert.reverts(
@@ -549,10 +537,6 @@ contract("DegenGang", async (accounts) => {
       const memberBAddress = await callMethod(this.DEGGN.methods.teamMemberB, []);
       const oldMemberBBalance = new BigNumber(await web3.eth.getBalance(memberBAddress));
 
-      // Get Community Account
-      const communityFundAddress = await callMethod(this.DEGGN.methods.communityFundAddress, []);
-      const oldCommunityBalance = new BigNumber(await web3.eth.getBalance(communityFundAddress));
-
       // Get Giveaway Account
       const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
       const oldGiveawayBalance = new BigNumber(await web3.eth.getBalance(giveawayAddress));
@@ -565,7 +549,6 @@ contract("DegenGang", async (accounts) => {
       const newDevBalance = new BigNumber(await web3.eth.getBalance(devAddress));
       const newMemberABalance = new BigNumber(await web3.eth.getBalance(memberAAddress));
       const newMemberBBalance = new BigNumber(await web3.eth.getBalance(memberBAddress));
-      const newCommunityBalance = new BigNumber(await web3.eth.getBalance(communityFundAddress));
       const newGiveawayBalance = new BigNumber(await web3.eth.getBalance(giveawayAddress));
 
       // Check Balance
@@ -573,7 +556,6 @@ contract("DegenGang", async (accounts) => {
       assert.equal(newDevBalance.minus(oldDevBalance).toFixed(), devAmount.toFixed());
       assert.equal(newMemberABalance.minus(oldMemberABalance).toFixed(), memberAAmount.toFixed());
       assert.equal(newMemberBBalance.minus(oldMemberBBalance).toFixed(), memberBAmount.toFixed());
-      assert.equal(newCommunityBalance.minus(oldCommunityBalance).toFixed(), communityAmount.toFixed());
       assert.equal(newGiveawayBalance.minus(oldGiveawayBalance).toFixed(), giveawayAmount.toFixed());
     });
   });

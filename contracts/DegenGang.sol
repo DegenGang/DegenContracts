@@ -22,7 +22,6 @@ contract DegenGang is ERC721, Ownable {
     uint256 public maxByMint;
 
     address public clientAddress;    
-    address public communityFundAddress;
     address public giveawayAddress;
     address public devAddress;
     address public teamMemberA;
@@ -45,7 +44,6 @@ contract DegenGang is ERC721, Ownable {
         address dev,
         address memberA,
         address memberB,
-        address communityFund,
         address giveaway
     ) ERC721("Degen Gang", "DEGGN") {
         totalSaleElement = 7000; // 7K
@@ -57,7 +55,6 @@ contract DegenGang is ERC721, Ownable {
         devAddress = dev;
         teamMemberA = memberA;
         teamMemberB = memberB;
-        communityFundAddress = communityFund;
         giveawayAddress = giveaway;
     }
 
@@ -180,7 +177,7 @@ contract DegenGang is ERC721, Ownable {
         uint256 totalBalance = address(this).balance;
         uint256 restAmount = totalBalance;
 
-        uint256 clientAmount = totalBalance.mul(4500).div(10000); // 45%
+        uint256 clientAmount = totalBalance.mul(5000).div(10000); // 50%
         restAmount = restAmount.sub(clientAmount);
 
         uint256 devAmount = totalBalance.mul(3000).div(10000); // 30%
@@ -191,9 +188,6 @@ contract DegenGang is ERC721, Ownable {
 
         uint256 memberBAmount = totalBalance.mul(1000).div(10000); // 10%
         restAmount = restAmount.sub(memberBAmount);
-
-        uint256 communityAmount = totalBalance.mul(500).div(10000); // 5%
-        restAmount = restAmount.sub(communityAmount);
 
         uint256 giveawayAmount = restAmount;    // 5%
 
@@ -212,10 +206,6 @@ contract DegenGang is ERC721, Ownable {
         // Withdraw To MemberB
         (bool withdrawMemberB, ) = teamMemberB.call{value: memberBAmount}("");
         require(withdrawMemberB, "Withdraw Failed To Member B");
-
-        // Withdraw To Community
-        (bool withdrawCommunity, ) = communityFundAddress.call{value: communityAmount}("");
-        require(withdrawCommunity, "Withdraw Failed To Community");
 
         // Withdraw To Giveaway
         (bool withdrawGiveaway, ) = giveawayAddress.call{value: giveawayAmount}("");
