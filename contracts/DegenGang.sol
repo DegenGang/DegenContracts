@@ -173,7 +173,7 @@ contract DegenGang is ERC721, Ownable {
     /**
      * Withdraw
      */
-    function withdrawAll() public onlyOwner {
+    function withdrawAll() external onlyOwner {
         uint256 totalBalance = address(this).balance;
         uint256 restAmount = totalBalance;
 
