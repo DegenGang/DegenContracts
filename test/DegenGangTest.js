@@ -3,9 +3,9 @@ const DegenGangABI = require('./abis/DegenGang.json');
 const truffleAssert = require('truffle-assertions');
 const BigNumber = require('bignumber.js');
 
-const { 
+const {
   callMethod
-}  =  require('./utils');
+}  =  require('./utils/utils');
 
 contract("DegenGang", async (accounts) => {
   const deployer = accounts[0];
@@ -15,7 +15,7 @@ contract("DegenGang", async (accounts) => {
   const baseNFTURI = 'https://dengengang.io/api/image/';
   
   beforeEach(async () => {
-    // Create Instances
+    // Create Degen-ERC721 Instance
     this.DEGGNInstance = await DegenGang.new(
       accounts[4],  // Client
       accounts[5],  // Dev
@@ -24,7 +24,7 @@ contract("DegenGang", async (accounts) => {
       accounts[8],  // Giveaway
       { from: deployer }
     );
-    // Create Contracts
+    // Create Degen-ERC721 Contract
     this.DEGGN = await new web3.eth.Contract(DegenGangABI.abi, this.DEGGNInstance.address);
   });
   
@@ -108,28 +108,42 @@ contract("DegenGang", async (accounts) => {
 
   describe ('Test - Sale Status', async() => {
     it ('Check Sale Status', async() => {
-      // Get Initial Sale Status
-      const saleIsActive = await callMethod(this.DEGGN.methods.saleIsActive, []);
+      // Get Initial Public Sale Status
+      const publicSaleIsActive = await callMethod(this.DEGGN.methods.publicSaleIsActive, []);
+      // Get Initial Public Sale Status
+      const privateSaleIsActive = await callMethod(this.DEGGN.methods.privateSaleIsActive, []);
       // Check Sale Status
-      assert.equal(saleIsActive, false);
+      assert.equal(publicSaleIsActive, false);
+      assert.equal(privateSaleIsActive, false);
     });
 
     it ('Check Set Sale Status - no Owner call it', async() => {
       // Set Sale Status
       await truffleAssert.reverts(
-        this.DEGGNInstance.setSaleStatus(true, { from: accounts[1] }),
+        this.DEGGNInstance.setPublicSaleStatus(true, { from: accounts[1] }),
+        "Ownable: caller is not the owner"
+      );
+      await truffleAssert.reverts(
+        this.DEGGNInstance.setPrivateSaleStatus(true, { from: accounts[1] }),
         "Ownable: caller is not the owner"
       );
     });
 
     it ('Check Set Sale Status - Owner call it', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
-      // Get Sale Status
-      const saleIsActive = await callMethod(this.DEGGN.methods.saleIsActive, []);
-      // Check Sale Status
-      assert.equal(saleIsActive, true);
-    })
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
+      // Get Public Sale Status
+      const publicSaleIsActive = await callMethod(this.DEGGN.methods.publicSaleIsActive, []);
+      // Check Public Sale Status
+      assert.equal(publicSaleIsActive, true);
+
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+      // Get Private Sale Status
+      const privateSaleIsActive = await callMethod(this.DEGGN.methods.privateSaleIsActive, []);
+      // Check Public Sale Status
+      assert.equal(privateSaleIsActive, true);
+    });
   });
 
   describe ('Test - Base URI', async() => {
@@ -158,7 +172,31 @@ contract("DegenGang", async (accounts) => {
     });
   });
 
-  describe ('Test - Mint DEGGN By User', async() => {
+  describe ('Test - Update White List', async() => {
+    it ('Check White List - no Owner call it', async() => {
+      // Set Base URI
+      await truffleAssert.reverts(
+        this.DEGGNInstance.updateWhiteList([accounts[5]], { from: accounts[1] }),
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it ('Update White List', async() => {
+      const whiteUserList = [accounts[2], accounts[3], accounts[4]];
+
+      // Set White List
+      await this.DEGGNInstance.updateWhiteList(whiteUserList, { from: deployer });
+
+      for (let i = 0; i < whiteUserList.length; i += 1) {
+        const whiteUserInfo = await callMethod(this.DEGGN.methods.userWhiteList, [whiteUserList[i]]);
+        
+        assert.equal(parseInt(whiteUserInfo.maxSaleCount, 10), 3);
+        assert.equal(parseInt(whiteUserInfo.currentSaleCount, 10), 0);
+      }
+    });
+  });
+
+  describe ('Test - Mint DEGGN By User at Private Sale', async() => {
     beforeEach(async() => {
       // Set Base URI
       await this.DEGGNInstance.setBaseURI(baseNFTURI, { from: deployer });
@@ -200,8 +238,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check Max Limit To Presale', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -214,8 +252,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check Exceeds Amount', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -228,8 +266,243 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check Low Price To Mint', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
+
+      // Mint DEGGN
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 20, { value: defaultValue, from: accounts[1] }),
+        'Low Price To Mint'
+      );
+    });
+
+    it ('Check White List To Mint', async() => {
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('7000', { from : deployer });
+
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 20, { value: twoETHValue, from: accounts[1] }),
+        "You're not in white list"
+      );
+    });
+
+    it ('Check Mint Over 3 Deggns', async() => {
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('7000', { from : deployer });
+
+      // Update White List
+      const whiteUserList = [accounts[1]];
+      // Set White List
+      await this.DEGGNInstance.updateWhiteList(whiteUserList, { from: deployer });
+
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 20, { value: twoETHValue, from: accounts[1] }),
+        "You can not mint over 3 deggns"
+      );
+    });
+
+    it ('Check DEGGN Mint', async() => {
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
+
+      // Update White List
+      const whiteUserList = [accounts[1]];
+      // Set White List
+      await this.DEGGNInstance.updateWhiteList(whiteUserList, { from: deployer });
+
+      // Mint 2 DEGGN
+      await this.DEGGNInstance.mintByUser(accounts[1], 2, { value: defaultValue, from: accounts[1] });
+
+      // Get Balance Of User
+      const userBalance = await callMethod(this.DEGGN.methods.balanceOf, [accounts[1]]);
+
+      // Check Balance
+      assert.equal(userBalance, '2');
+
+      // Get Token List Of Owner
+      let tokenList = await callMethod(this.DEGGN.methods.getTokensOfOwner, [accounts[1]]);
+      
+      // Check Token URIs
+      for (let i = 0; i < tokenList.length; i += 1) {
+        // Get Token URI
+        const tokenURI = await callMethod(this.DEGGN.methods.tokenURI, [tokenList[i]]);
+        // Check Token URI
+        assert.equal(`${baseNFTURI}${tokenList[i]}`, tokenURI);
+      }
+
+      // Check Owners
+      for (let i = 0; i < tokenList.length; i += 1) {
+        // Get Owner Of ID
+        const owner = await callMethod(this.DEGGN.methods.ownerOf, [tokenList[i]]);
+        // Check Owner
+        assert.equal(owner, accounts[1]);
+      }
+
+      // Check Mint Again, Over 3 deggns totally
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 2, { value: twoETHValue, from: accounts[1] }),
+        "You've already mint 3 deggns"
+      );
+
+      // Mint 1 DEGGN Again
+      await this.DEGGNInstance.mintByUser(accounts[1], 1, { value: defaultValue, from: accounts[1] });
+
+      // Get Token List Of Owner
+      tokenList = await callMethod(this.DEGGN.methods.getTokensOfOwner, [accounts[1]]);
+      
+      // Check Token URIs Again
+      for (let i = 0; i < tokenList.length; i += 1) {
+        // Get Token URI
+        const tokenURI = await callMethod(this.DEGGN.methods.tokenURI, [tokenList[i]]);
+        // Check Token URI
+        assert.equal(`${baseNFTURI}${tokenList[i]}`, tokenURI);
+      }
+
+      const whiteUserInfo = await callMethod(this.DEGGN.methods.userWhiteList, [accounts[1]]);
+      assert.equal(parseInt(whiteUserInfo.maxSaleCount, 10), 3);
+      assert.equal(parseInt(whiteUserInfo.currentSaleCount, 10), 3);
+
+      // Check Total Supply
+      const totalSupply = await callMethod(this.DEGGN.methods.totalSupply, []);
+      assert.equal(totalSupply, '3');
+
+      // Check Total Mint
+      const totalMint = await callMethod(this.DEGGN.methods.totalMint, []);
+      assert.equal(totalMint, '3');
+    });
+
+    it ('Check DEGGN Mint and TransferFrom', async() => {
+      // Set Private Sale Status
+      await this.DEGGNInstance.setPrivateSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
+
+      // Update White List
+      const whiteUserList = [accounts[1]];
+      // Set White List
+      await this.DEGGNInstance.updateWhiteList(whiteUserList, { from: deployer });
+
+      // Mint 3 DEGGN
+      await this.DEGGNInstance.mintByUser(accounts[1], 3, { value: defaultValue, from: accounts[1] });
+
+      // Get Balance Of User
+      const userBalance = await callMethod(this.DEGGN.methods.balanceOf, [accounts[1]]);
+
+      // Check Balance
+      assert.equal(userBalance, '3');
+
+      // TransferFrom One Item To Another User
+      // Approve
+      await this.DEGGNInstance.approve(accounts[0], '1', { from: accounts[1] });
+      // Call SafeTransferFrom
+      await this.DEGGNInstance.safeTransferFrom(
+        accounts[1],
+        accounts[2],
+        '1',
+        {
+          from: accounts[0]
+        }
+      );
+
+      // Check Balance
+      const firstUserBalance = await callMethod(this.DEGGN.methods.balanceOf, [accounts[1]]);
+      assert.equal(firstUserBalance, '2');
+      const secondUserBalance = await callMethod(this.DEGGN.methods.balanceOf, [accounts[2]]);
+      assert.equal(secondUserBalance, '1');
+
+      // Check Owner Of Token
+      // Get Owner Of ID
+      const owner = await callMethod(this.DEGGN.methods.ownerOf, ['1']);
+      // Check Owner
+      assert.equal(owner, accounts[2]);      
+    });
+  });
+
+  describe ('Test - Mint DEGGN By User At PublicSale', async() => {
+    beforeEach(async() => {
+      // Set Base URI
+      await this.DEGGNInstance.setBaseURI(baseNFTURI, { from: deployer });
+    });
+
+    it ('Check Client&Dev Address', async() => {
+      // Get Client Address
+      const clientAddress = await callMethod(this.DEGGN.methods.clientAddress, []);
+      // Check Client Address
+      assert.equal(clientAddress, accounts[4]);
+
+      // Get Dev Address
+      const devAddress = await callMethod(this.DEGGN.methods.devAddress, []);
+      // Check Dev Address
+      assert.equal(devAddress, accounts[5]);
+
+      // Get MemberA Address
+      const teamMemberA = await callMethod(this.DEGGN.methods.teamMemberA, []);
+      // Check Dev Address
+      assert.equal(teamMemberA, accounts[6]);
+
+      // Get MemberB Address
+      const teamMemberB = await callMethod(this.DEGGN.methods.teamMemberB, []);
+      // Check Dev Address
+      assert.equal(teamMemberB, accounts[7]);
+
+      // Get Giveaway Address
+      const giveawayAddress = await callMethod(this.DEGGN.methods.giveawayAddress, []);
+      // Check Giveaway Address
+      assert.equal(giveawayAddress, accounts[8]);
+    });
+
+    it ('Check Sale Is Active', async() => {
+      // Mint DEGGN
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 10, { value: defaultValue, from: accounts[1] }),
+        "Sale is not active"
+      );
+    });
+
+    it ('Check Max Limit To Presale', async() => {
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
+
+      // Mint DEGGN
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 60, { value: defaultValue, from: accounts[1] }),
+        'Max Limit To Presale'
+      );
+    });
+
+    it ('Check Exceeds Amount', async() => {
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
+
+      // Set Total Sale Element
+      await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
+
+      // Mint DEGGN
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByUser(accounts[1], 31, { value: defaultValue, from: accounts[1] }),
+        'Exceeds Amount'
+      );
+    });
+
+    it ('Check Low Price To Mint', async() => {
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -242,8 +515,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check DEGGN Mint', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -278,8 +551,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check DEGGN Mint and Total Supply&Mint', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -303,8 +576,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check DEGGN Mint Twice', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -355,8 +628,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check DEGGN Mint and TransferFrom', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('50', { from : deployer });
@@ -431,8 +704,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check DEGGN Mint and Admin Mint', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Total Sale Element
       await this.DEGGNInstance.setTotalSaleElement('30', { from : deployer });
@@ -489,8 +762,8 @@ contract("DegenGang", async (accounts) => {
     });
 
     it ('Check Withdraw After Mint', async() => {
-      // Set Sale Status
-      await this.DEGGNInstance.setSaleStatus(true, { from : deployer });
+      // Set Public Sale Status
+      await this.DEGGNInstance.setPublicSaleStatus(true, { from : deployer });
 
       // Set Max By Mint
       await this.DEGGNInstance.setMaxByMint('50', { from : deployer });
@@ -509,8 +782,8 @@ contract("DegenGang", async (accounts) => {
 
       // Get Contract Balance
       const contractBalance = new BigNumber(await web3.eth.getBalance(this.DEGGNInstance.address));
-      const clientAmount = contractBalance.multipliedBy(5000).dividedBy(10000);
-      const devAmount = contractBalance.multipliedBy(3000).dividedBy(10000);
+      const clientAmount = contractBalance.multipliedBy(5500).dividedBy(10000);
+      const devAmount = contractBalance.multipliedBy(2500).dividedBy(10000);
       const memberAAmount = contractBalance.multipliedBy(500).dividedBy(10000);
       const memberBAmount = contractBalance.multipliedBy(1000).dividedBy(10000);
       const giveawayAmount = contractBalance.minus(clientAmount).minus(devAmount).minus(memberAAmount).minus(memberBAmount);

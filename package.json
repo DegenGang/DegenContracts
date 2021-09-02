@@ -9,7 +9,7 @@
   "scripts": {
     "build": "truffle build",
     "migrate": "truffle migrate",
-    "test": "truffle test ./test/DegenGangTest.js",
+    "test": "truffle test ./test/*.js",
     "prettier": "pretty-quick --pattern \"**/*.*(js|jsx)\""
   },
   "repository": {

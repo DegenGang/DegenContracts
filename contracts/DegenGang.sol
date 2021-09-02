@@ -17,17 +17,25 @@ contract DegenGang is ERC721, Ownable {
 
     Counters.Counter private _tokenIdTracker;
 
+    struct WhiteList {
+        uint256 maxSaleCount;
+        uint256 currentSaleCount;
+    }
+
+    mapping (address => WhiteList) public userWhiteList;
+
     uint256 public totalSaleElement;
     uint256 public mintPrice;
     uint256 public maxByMint;
 
-    address public clientAddress;    
-    address public giveawayAddress;
+    address public clientAddress;
     address public devAddress;
     address public teamMemberA;
     address public teamMemberB;
+    address public giveawayAddress;
 
-    bool public saleIsActive;
+    bool public publicSaleIsActive;
+    bool public privateSaleIsActive;
 
     event CreateDeggn(
         address indexed minter,
@@ -35,7 +43,10 @@ contract DegenGang is ERC721, Ownable {
     );
 
     modifier checkSaleIsActive {
-        require(saleIsActive == true, "Sale is not active");
+        require (
+            privateSaleIsActive == true || publicSaleIsActive == true,
+            "Sale is not active"
+        );
         _;
     }
 
@@ -48,7 +59,8 @@ contract DegenGang is ERC721, Ownable {
     ) ERC721("Degen Gang", "DEGGN") {
         totalSaleElement = 7000; // 7K
         mintPrice = 6 * 10 ** 16; // 0.06 ETH
-        saleIsActive = false;
+        publicSaleIsActive = false;
+        privateSaleIsActive = false;
         maxByMint = 30;
 
         clientAddress = client;
@@ -80,10 +92,17 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Set Sale Status
+     * Set Public Sale Status
      */
-    function setSaleStatus(bool saleStatus) external onlyOwner {
-        saleIsActive = saleStatus;
+    function setPublicSaleStatus(bool saleStatus) external onlyOwner {
+        publicSaleIsActive = saleStatus;
+    }
+
+    /**
+     * Set Private Sale Status
+     */
+    function setPrivateSaleStatus(bool saleStatus) external onlyOwner {
+        privateSaleIsActive = saleStatus;
     }
 
     /**
@@ -129,6 +148,18 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
+     * Update White List
+     */
+    function updateWhiteList(address[] memory addressList) external onlyOwner {
+        for (uint256 i = 0; i < addressList.length; i += 1) {
+            userWhiteList[addressList[i]] = WhiteList(
+                3,      // Max sale count: 3 with white list user
+                0       // Initialize current sale count: 0
+            );
+        }
+    }
+
+    /**
      * Mint An Element
      */
     function _mintAnElement(address _to) internal {
@@ -151,8 +182,26 @@ contract DegenGang is ERC721, Ownable {
         require(_amount <= maxByMint, "Exceeds Amount");
         require(mintPrice.mul(_amount) <= msg.value, "Low Price To Mint");
 
-        for (uint256 i = 0; i < _amount; i += 1) {
-            _mintAnElement(_to);
+        if (privateSaleIsActive == true) {
+            WhiteList memory userInfo = userWhiteList[_to];
+            require(userInfo.maxSaleCount > 0, "You're not in white list");
+            require(_amount <= 3, "You can not mint over 3 deggns");
+
+            uint256 limitCount = userInfo.maxSaleCount.sub(userInfo.currentSaleCount);
+            require(limitCount >= _amount, "You've already mint 3 deggns");
+
+            for (uint256 i = 0; i < _amount; i += 1) {
+                _mintAnElement(_to);
+            }
+
+            userWhiteList[_to] = WhiteList(
+                userInfo.maxSaleCount,
+                userInfo.currentSaleCount.add(_amount)
+            );
+        } else if (publicSaleIsActive == true) {
+            for (uint256 i = 0; i < _amount; i += 1) {
+                _mintAnElement(_to);
+            }
         }
     }
 
@@ -171,16 +220,16 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Withdraw
+     * Withdraw the Treasury from Presale&Sale
      */
     function withdrawAll() external onlyOwner {
         uint256 totalBalance = address(this).balance;
         uint256 restAmount = totalBalance;
 
-        uint256 clientAmount = totalBalance.mul(5000).div(10000); // 50%
+        uint256 clientAmount = totalBalance.mul(5500).div(10000); // 55%
         restAmount = restAmount.sub(clientAmount);
 
-        uint256 devAmount = totalBalance.mul(3000).div(10000); // 30%
+        uint256 devAmount = totalBalance.mul(2500).div(10000); // 25%
         restAmount = restAmount.sub(devAmount);
 
         uint256 memberAAmount = totalBalance.mul(500).div(10000); // 5%
