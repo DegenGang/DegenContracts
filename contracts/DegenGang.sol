@@ -17,16 +17,12 @@ contract DegenGang is ERC721, Ownable {
 
     Counters.Counter private _tokenIdTracker;
 
-    struct WhiteList {
-        uint256 maxSaleCount;
-        uint256 currentSaleCount;
-    }
+    mapping (address => bool) public userWhiteList;
 
-    mapping (address => WhiteList) public userWhiteList;
-
-    uint256 public totalSaleElement;
-    uint256 public mintPrice;
-    uint256 public maxByMint;
+    uint256 public constant totalSaleElement = 7000; // 7K
+    uint256 public constant mintPrice = 6 * 10 ** 16; // 0.06 ETH
+    uint256 public constant maxPrivateSaleMintQuantity = 3; // 3 DEGGNs
+    uint256 public constant maxPublicSaleMintQuantity = 30; // 30 DEGGNs
 
     address public clientAddress;
     address public devAddress;
@@ -42,10 +38,26 @@ contract DegenGang is ERC721, Ownable {
         uint256 indexed id
     );
 
-    modifier checkSaleIsActive {
+    modifier checkPrivateSaleIsActive {
         require (
-            privateSaleIsActive == true || publicSaleIsActive == true,
-            "Sale is not active"
+            privateSaleIsActive == true,
+            "Private Sale is not active"
+        );
+        _;
+    }
+
+    modifier checkPublicSaleIsActive {
+        require (
+            publicSaleIsActive == true,
+            "Public Sale is not active"
+        );
+        _;
+    }
+
+    modifier onlyWhiteList {
+        require (
+            userWhiteList[msg.sender] == true,
+            "You're not in white list"
         );
         _;
     }
@@ -57,11 +69,8 @@ contract DegenGang is ERC721, Ownable {
         address memberB,
         address giveaway
     ) ERC721("Degen Gang", "DEGGN") {
-        totalSaleElement = 7000; // 7K
-        mintPrice = 6 * 10 ** 16; // 0.06 ETH
         publicSaleIsActive = false;
         privateSaleIsActive = false;
-        maxByMint = 30;
 
         clientAddress = client;
         devAddress = dev;
@@ -71,42 +80,21 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Set Total Sale Element
-     */
-    function setTotalSaleElement(uint256 saleElement) external onlyOwner {
-        totalSaleElement = saleElement;
-    }
-
-    /**
-     * Set Mint Price
-     */
-    function setMintPrice(uint256 newMintPrice) external onlyOwner {
-        mintPrice = newMintPrice;
-    }
-
-    /**
-     * Set Max By Mint
-     */
-    function setMaxByMint(uint256 newMaxByMint) external onlyOwner {
-        maxByMint = newMaxByMint;
-    }
-
-    /**
-     * Set Public Sale Status
-     */
-    function setPublicSaleStatus(bool saleStatus) external onlyOwner {
-        publicSaleIsActive = saleStatus;
-    }
-
-    /**
-     * Set Private Sale Status
+     * Set Private Sale Status, only Owner call it
      */
     function setPrivateSaleStatus(bool saleStatus) external onlyOwner {
         privateSaleIsActive = saleStatus;
     }
 
     /**
-     * Set Base URI
+     * Set Public Sale Status, only Owner call it
+     */
+    function setPublicSaleStatus(bool saleStatus) external onlyOwner {
+        publicSaleIsActive = saleStatus;
+    }
+
+    /**
+     * Set Base URI, only Owner call it
      */
     function setBaseURI(string memory baseURI) external onlyOwner {
         _setBaseURI(baseURI);
@@ -148,19 +136,16 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Update White List
+     * Update White List, only Owner call it
      */
     function updateWhiteList(address[] memory addressList) external onlyOwner {
         for (uint256 i = 0; i < addressList.length; i += 1) {
-            userWhiteList[addressList[i]] = WhiteList(
-                3,      // Max sale count: 3 with white list user
-                0       // Initialize current sale count: 0
-            );
+            userWhiteList[addressList[i]] = true;
         }
     }
 
     /**
-     * Mint An Element
+     * Mint An Element, Internal Function
      */
     function _mintAnElement(address _to) internal {
         uint256 id = _totalSupply();
@@ -172,36 +157,47 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Mint DEGGN By User
+     * Mint DEGGN By User in Private
      */
-    function mintByUser(address _to, uint256 _amount) public payable checkSaleIsActive {
+    function privateMintByUser(uint256 mintQuantity)
+        public
+        payable
+        checkPrivateSaleIsActive
+        onlyWhiteList
+    {
+        uint256 totalSupply = _totalSupply();
+        uint256 balance = balanceOf(_msgSender());
+
+        require(mintQuantity > 0, "Mint Quantity should be more than zero");
+        require(totalSupply <= totalSaleElement, "Presale End");
+        require(totalSupply + mintQuantity <= totalSaleElement, "Max Limit To Total Sale");
+        require(mintQuantity <= maxPrivateSaleMintQuantity, "Exceeds Private Sale Amount");
+        require(balance + mintQuantity <= maxPrivateSaleMintQuantity, "Max Limit To Presale");
+        require(mintPrice.mul(mintQuantity) <= msg.value, "Low Price To Mint");
+
+        for (uint256 i = 0; i < mintQuantity; i += 1) {
+            _mintAnElement(_msgSender());
+        }
+    }
+
+    /**
+     * Mint DEGGN By User in Public
+     */
+    function publicMintByUser(uint256 mintQuantity)
+        public
+        payable
+        checkPublicSaleIsActive
+    {
         uint256 totalSupply = _totalSupply();
 
+        require(mintQuantity > 0, "Mint Quantity should be more than zero");
         require(totalSupply <= totalSaleElement, "Presale End");
-        require(totalSupply + _amount <= totalSaleElement, "Max Limit To Presale");
-        require(_amount <= maxByMint, "Exceeds Amount");
-        require(mintPrice.mul(_amount) <= msg.value, "Low Price To Mint");
+        require(totalSupply + mintQuantity <= totalSaleElement, "Max Limit To Total Sale");
+        require(mintQuantity <= maxPublicSaleMintQuantity, "Exceeds Public Sale Amount");
+        require(mintPrice.mul(mintQuantity) <= msg.value, "Low Price To Mint");
 
-        if (privateSaleIsActive == true) {
-            WhiteList memory userInfo = userWhiteList[_to];
-            require(userInfo.maxSaleCount > 0, "You're not in white list");
-            require(_amount <= 3, "You can not mint over 3 deggns");
-
-            uint256 limitCount = userInfo.maxSaleCount.sub(userInfo.currentSaleCount);
-            require(limitCount >= _amount, "You've already mint 3 deggns");
-
-            for (uint256 i = 0; i < _amount; i += 1) {
-                _mintAnElement(_to);
-            }
-
-            userWhiteList[_to] = WhiteList(
-                userInfo.maxSaleCount,
-                userInfo.currentSaleCount.add(_amount)
-            );
-        } else if (publicSaleIsActive == true) {
-            for (uint256 i = 0; i < _amount; i += 1) {
-                _mintAnElement(_to);
-            }
+        for (uint256 i = 0; i < mintQuantity; i += 1) {
+            _mintAnElement(_msgSender());
         }
     }
 
@@ -220,7 +216,7 @@ contract DegenGang is ERC721, Ownable {
     }
 
     /**
-     * Withdraw the Treasury from Presale&Sale
+     * Withdraw the Treasury from Presale&Sale, only Owner call it
      */
     function withdrawAll() external onlyOwner {
         uint256 totalBalance = address(this).balance;
