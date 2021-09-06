@@ -204,13 +204,13 @@ contract DegenGang is ERC721, Ownable {
     /**
      * Mint DEGGN By Owner
      */
-    function mintByOwner(address _to, uint256 _amount) external onlyOwner {
+    function mintByOwner(address _to, uint256 mintQuantity) external onlyOwner {
         uint256 totalSupply = _totalSupply();
 
         require(totalSupply <= totalSaleElement, "Presale End");
-        require(totalSupply + _amount <= totalSaleElement, "Max Limit To Presale");
+        require(totalSupply + mintQuantity <= totalSaleElement, "Max Limit To Presale");
 
-        for (uint256 i = 0; i < _amount; i += 1) {
+        for (uint256 i = 0; i < mintQuantity; i += 1) {
             _mintAnElement(_to);
         }
     }
