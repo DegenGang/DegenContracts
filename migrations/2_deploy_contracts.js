@@ -1,6 +1,6 @@
 const fs = require('fs');
 const DegenGang = artifacts.require("./DegenGang.sol");
-const Treasury = artifacts.require("./Treasury.sol");
+const DegenGangTreasury = artifacts.require("./DegenGangTreasury.sol");
 
 function expertContractJSON(contractName, instance) {
   const path = "./test/abis/" + contractName + ".json";
@@ -19,8 +19,8 @@ function expertContractJSON(contractName, instance) {
 module.exports = async function (deployer) {
   const zeroAddress = '0x0000000000000000000000000000000000000000';
   await deployer.deploy(DegenGang, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress);
-  await deployer.deploy(Treasury, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress);
+  await deployer.deploy(DegenGangTreasury, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroAddress);
 
   expertContractJSON('DegenGang', DegenGang);
-  expertContractJSON('Treasury', Treasury);
+  expertContractJSON('DegenGangTreasury', DegenGangTreasury);
 };
