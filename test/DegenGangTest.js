@@ -612,6 +612,12 @@ contract("DegenGang", async (accounts) => {
       // Check Balance
       assert.equal(userBalance, '30');
 
+      // Check call from wrong owner
+      await truffleAssert.reverts(
+        this.DEGGNInstance.mintByOwner(accounts[2], 10, { from: accounts[1] }),
+        "Ownable: caller is not the owner"
+      );
+
       // Admin Mint
       await this.DEGGNInstance.mintByOwner(accounts[2], 10, { from: deployer });
 
@@ -643,6 +649,43 @@ contract("DegenGang", async (accounts) => {
       // Check Total Mint
       const totalMint = await callMethod(this.DEGGN.methods.totalMint, []);
       assert.equal(totalMint, '50');
+    });
+
+    it ('Check Batch Admin Mint', async() => {
+      const mintAddressList = [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]];
+      const quantityList = ['10', '5', '5', '5', '5'];
+
+      // Check call from wrong owner
+      await truffleAssert.reverts(
+        this.DEGGNInstance.batchMintByOwner(mintAddressList, quantityList, { from: accounts[1] }),
+        "Ownable: caller is not the owner"
+      );
+
+      await this.DEGGNInstance.batchMintByOwner(mintAddressList, quantityList, { from: deployer });
+
+      // Check Total Supply
+      const totalSupply = await callMethod(this.DEGGN.methods.totalSupply, []);
+      assert.equal(totalSupply, '30');
+
+      // Check Total Mint
+      const totalMint = await callMethod(this.DEGGN.methods.totalMint, []);
+      assert.equal(totalMint, '30');
+
+      let previousSum = 0;
+      for (let i = 0; i < mintAddressList; i += 1) {
+        // Check Balance
+        const userBalance = await callMethod(this.DEGGN.methods.balanceOf, [mintAddressList[i]]);
+        assert.equal(userBalance, quantityList[i]);
+
+        previousSum += i > 0 ? parseInt(quantityList[i - 1]) : 0;
+
+        for (let j = 0; j < parseInt(quantityList[i]); j += 1) {
+          // Get Owner Of ID
+          const owner = await callMethod(this.DEGGN.methods.ownerOf, [previousSum + j]);
+          // Check Owner
+          assert.equal(owner, mintAddressList[i]);
+        }
+      }
     });
 
     it ('Check Withdraw After Mint', async() => {

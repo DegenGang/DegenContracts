@@ -8,7 +8,7 @@ import "./SafeMath.sol";
 /**
  * @title DegenGang Treasury Contract
  */
-contract Treasury is Ownable {
+contract DegenGangTreasury is Ownable {
     using SafeMath for uint256;
 
     address public clientAddress;
