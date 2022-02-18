@@ -3,7 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+}
 
 contract DegenGangTreasury is Ownable {
     using SafeMath for uint256;
@@ -23,7 +27,7 @@ contract DegenGangTreasury is Ownable {
         uint256 totalBalance = token.balanceOf(address(this));
         uint256 restAmount = totalBalance;
 
-        uint256 projectWalletAmount = totalBalance.mul(7000).div(10000); //70% | 3.5% of OpenSea
+        uint256 projectWalletAmount = totalBalance.mul(7000).div(10000);
         restAmount = restAmount.sub(projectWalletAmount);
 
         require(
@@ -41,7 +45,7 @@ contract DegenGangTreasury is Ownable {
         uint256 totalBalance = address(this).balance;
         uint256 restAmount = totalBalance;
 
-        uint256 projectWalletAmount = totalBalance.mul(7000).div(10000); //70% | 3.5% of OpenSea resell
+        uint256 projectWalletAmount = totalBalance.mul(7000).div(10000);
         restAmount = restAmount.sub(projectWalletAmount);
 
         (bool withdrawProjectWallet, ) = projectWallet.call{
